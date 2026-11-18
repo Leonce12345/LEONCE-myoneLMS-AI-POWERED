@@ -88,7 +88,8 @@ export default function OtpVerification() {
       } else if (role === 'instructor') {
         navigate('/instructor/dashboard', { replace: true });
       } else {
-        navigate('/payment-form', { replace: true });
+        // ===== FIXED LINE: Changed from '/payment-form' to '/student/dashboard' =====
+        navigate('/student/dashboard', { replace: true });
       }
 
     } catch (error) {

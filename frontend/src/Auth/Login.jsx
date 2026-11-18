@@ -86,7 +86,7 @@ export default function Login() {
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>
           </svg>
         </div>
-        <h2 style={{ fontSize: '28px', fontWeight: '700', color: '#111827', margin: '0 0 8px 0', letterSpacing: '-0.025em' }}>Welcome Back</h2>
+        <h2 style={{ fontSize: '28px', fontWeight: '700', color: '#111827', margin: '0 0 8px 0', letterSpacing: '-0.025em' }}>Welcome to myoneLMS Learnhub</h2>
         <p style={{ fontSize: '15px', color: '#6B7280', margin: '0 0 28px 0' }}>Please enter your credentials to sign in.</p>
 
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

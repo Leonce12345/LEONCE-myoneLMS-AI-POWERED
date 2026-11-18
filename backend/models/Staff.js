@@ -1,5 +1,6 @@
 // models/Staff.js
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const staffSchema = new mongoose.Schema({
     email: {
@@ -82,5 +83,22 @@ const staffSchema = new mongoose.Schema({
         default: null
     }
 }, { timestamps: true });
+
+// ===== FIXED HOOK - async WITHOUT next() =====
+staffSchema.pre('save', async function() {
+    // Only hash if password was changed
+    // On normal login, password is NOT modified, so it returns here immediately and does nothing
+    if (!this.isModified('password')) return;
+
+    // If password is already hashed, do not hash twice
+    if (this.password && (this.password.startsWith('$2a$') || this.password.startsWith('$2b$') || this.password.startsWith('$2y$'))) {
+        return;
+    }
+
+    // If password is empty (social login), skip
+    if (!this.password) return;
+
+    this.password = await bcrypt.hash(this.password, 10);
+});
 
 module.exports = mongoose.model('Staff', staffSchema);
