@@ -1,4 +1,33 @@
 const Course = require('../models/Course');
+const CourseChunk = require('../models/CourseChunk');
+const fs = require('fs');
+const pdf = require('pdf-parse');
+const { OpenAI } = require('openai');
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1",
+  defaultHeaders: {
+    "HTTP-Referer": "http://localhost:5173",
+    "X-Title": "LearnHub LMS",
+  },
+});
+
+const chunkText = (text, maxChunkSize = 1000) => {
+  const sentences = text.split(/(?<=[.?!])\s+/);
+  const chunks = [];
+  let currentChunk = '';
+  for (const sentence of sentences) {
+    if ((currentChunk + sentence).length > maxChunkSize) {
+      if (currentChunk) chunks.push(currentChunk.trim());
+      currentChunk = sentence + ' ';
+    } else {
+      currentChunk += sentence + ' ';
+    }
+  }
+  if (currentChunk) chunks.push(currentChunk.trim());
+  return chunks;
+};
 
 const createCourse = async (req, res) => {
   try {
@@ -16,8 +45,35 @@ const createCourse = async (req, res) => {
     });
 
     await newCourse.save();
+
+    if (documentFile) {
+      console.log("Processing PDF for AI...");
+      const dataBuffer = fs.readFileSync(documentFile);
+      const pdfData = await pdf(dataBuffer);
+      const fullText = pdfData.text;
+      const chunks = chunkText(fullText);
+
+      for (const chunk of chunks) {
+        if (!chunk.trim()) continue;
+        const embeddingResponse = await openai.embeddings.create({
+          model: "text-embedding-3-small",
+          input: chunk,
+        });
+        
+        await CourseChunk.create({
+          courseId: newCourse._id.toString(), // <-- Converts ObjectId to String
+          text: chunk,
+          embedding: embeddingResponse.data[0].embedding
+        });
+      }
+      console.log(`Successfully vectorized ${chunks.length} chunks for course: ${newCourse.title}`);
+    }
+
     res.status(201).json({ message: 'Course created successfully', course: newCourse });
-  } catch (error) { res.status(500).json({ message: 'Server error' }); }
+  } catch (error) { 
+    console.error("Error creating course:", error);
+    res.status(500).json({ message: 'Server error' }); 
+  }
 };
 
 const getInstructorCourses = async (req, res) => {
@@ -48,19 +104,21 @@ const enrollInCourse = async (req, res) => {
 
 const getCourseById = async (req, res) => {
   try {
-    const course = await Course.findById(req.params.courseId).populate('instructorId', 'name');
+    // ADDED: .populate('enrolledStudents', 'name email') to fix the attendance list
+    const course = await Course.findById(req.params.courseId)
+      .populate('instructorId', 'name')
+      .populate('enrolledStudents', 'name email');
+      
     if (!course) return res.status(404).json({ message: 'Course not found' });
     res.status(200).json(course);
   } catch (error) { res.status(500).json({ message: 'Server error' }); }
 };
 
-// NEW FUNCTION: Get course details specifically for the instructor (includes enrolled students)
 const getInstructorCourseDetail = async (req, res) => {
   try {
     const course = await Course.findById(req.params.courseId)
       .populate('instructorId', 'name')
-      .populate('enrolledStudents', 'name email'); // Populates student names and emails
-      
+      .populate('enrolledStudents', 'name email'); 
     if (!course) return res.status(404).json({ message: 'Course not found' });
     res.status(200).json(course);
   } catch (error) { res.status(500).json({ message: 'Server error' }); }

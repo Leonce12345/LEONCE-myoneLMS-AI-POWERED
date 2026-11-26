@@ -9,12 +9,15 @@ const session = require('express-session');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const FacebookStrategy = require('passport-facebook').Strategy;
-const path = require('path'); // <-- NEW IMPORT
+const path = require('path');
 
 const Staff = require('./models/Staff');
 const authRoutes = require('./routes/authRoutes');
 const mpesaRoutes = require('./routes/mpesaRoutes');
 const courseRoutes = require('./routes/courseRoutes');
+const aiRoutes = require('./routes/aiRoutes'); 
+const academicRoutes = require('./routes/academicRoutes'); 
+const messageRoutes = require('./routes/messageRoutes'); // <-- ADDED
 
 const app = express();
 app.set('trust proxy', 1);
@@ -29,7 +32,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// --- NEW: Serve the uploads folder statically ---
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use(session({
@@ -52,7 +54,6 @@ passport.use(new GoogleStrategy({
             const email = profile.emails && profile.emails.length > 0 ? profile.emails[0].value : '';
             let existingStaff = await Staff.findOne({ googleId: profile.id });
             if (existingStaff) return done(null, existingStaff);
-
             if (email) {
                 existingStaff = await Staff.findOne({ email });
                 if (existingStaff) {
@@ -62,7 +63,6 @@ passport.use(new GoogleStrategy({
                     return done(null, existingStaff);
                 }
             }
-
             const newStaff = await new Staff({
                 googleId: profile.id,
                 email: email,
@@ -88,7 +88,6 @@ passport.use(new FacebookStrategy({
             const email = profile.emails && profile.emails.length > 0 ? profile.emails[0].value : '';
             let existingStaff = await Staff.findOne({ facebookId: profile.id });
             if (existingStaff) return done(null, existingStaff);
-
             if (email) {
                 existingStaff = await Staff.findOne({ email });
                 if (existingStaff) {
@@ -98,7 +97,6 @@ passport.use(new FacebookStrategy({
                     return done(null, existingStaff);
                 }
             }
-
             const newStaff = await new Staff({
                 facebookId: profile.id,
                 email: email,
@@ -125,7 +123,10 @@ const connectDB = async() => {
     try {
         const conn = await mongoose.connect(process.env.MONGO_URI);
         console.log(`[Database] MongoDB Connected: ${conn.connection.host}`);
-    } catch (error) { process.exit(1); }
+    } catch (error) { 
+        console.error("[Database] Connection Error:", error); 
+        process.exit(1); 
+    }
 };
 connectDB();
 
@@ -133,7 +134,6 @@ const requireDoubleLayerAuth = (req, res, next) => {
     if (!req.session || !req.session.userId) return res.status(401).json({ error: 'Unauthorized: Session missing' });
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized: JWT missing' });
-
     const token = authHeader.split(' ')[1];
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -146,6 +146,9 @@ const requireDoubleLayerAuth = (req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/mpesa', mpesaRoutes);
 app.use('/api/courses', courseRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/academic', academicRoutes); 
+app.use('/api/messages', messageRoutes); // <-- ADDED
 
 app.get('/api/users', requireDoubleLayerAuth, async(req, res) => {
     try {

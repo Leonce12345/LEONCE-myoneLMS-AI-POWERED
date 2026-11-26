@@ -1,11 +1,37 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/Sidebar';
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import api from '../../api/axios';
+import { ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
 
 const StudentPayments = () => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user_data')) || { name: 'Grace', role: 'student' };
+
+  const [phone, setPhone] = useState('');
+  const [isPaying, setIsPaying] = useState(false);
+
+  const handlePayNow = async () => {
+    if (!phone || phone.length < 12) {
+      alert("Please enter a valid phone number (e.g., 254712345678)");
+      return;
+    }
+    setIsPaying(true);
+    try {
+      await api.post('/mpesa/stkpush', {
+        phone: phone,
+        amount: 1, // <-- CHANGED TO 1
+        courseId: "BIOLOGY_COURSE_ID", 
+        studentId: user._id || user.id
+      });
+      alert("STK Push sent! Please check your phone to enter your M-Pesa PIN.");
+    } catch (error) {
+      console.error(error);
+      alert(error.response?.data?.error || "Failed to initiate payment");
+    } finally {
+      setIsPaying(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[url('https://images.unsplash.com/photo-1557682250-33bd709cbe85?q=80&w=2029&auto=format&fit=crop')] bg-cover bg-center bg-fixed flex">
@@ -19,11 +45,23 @@ const StudentPayments = () => {
         <div className="max-w-2xl space-y-6">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
             <h2 className="text-lg font-bold text-slate-800 mb-4">Next Fee: Biology</h2>
-            <p className="text-3xl font-bold text-slate-800 mb-1">KES 1,500</p>
+            <p className="text-3xl font-bold text-slate-800 mb-1">KES 1</p> {/* <-- CHANGED TO KES 1 */}
             <p className="text-sm text-slate-500 mb-6">M-Pesa STK Push</p>
             <div className="flex gap-3">
-              <input type="text" placeholder="Enter Phone (2547...)" className="flex-1 px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-cyan-500 bg-slate-50" />
-              <button className="bg-blue-600 text-white px-6 py-3 rounded-xl font-medium shadow-md hover:bg-blue-700 transition whitespace-nowrap">Pay Now</button>
+              <input 
+                type="text" 
+                placeholder="Enter Phone (2547...)" 
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="flex-1 px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-cyan-500 bg-slate-50" 
+              />
+              <button 
+                onClick={handlePayNow}
+                disabled={isPaying}
+                className="bg-blue-600 text-white px-6 py-3 rounded-xl font-medium shadow-md hover:bg-blue-700 transition whitespace-nowrap flex items-center justify-center min-w-[120px]"
+              >
+                {isPaying ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Pay Now'}
+              </button>
             </div>
           </div>
 

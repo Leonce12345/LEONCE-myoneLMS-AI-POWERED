@@ -1,3 +1,4 @@
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './Auth/Login';
 import Register from './Auth/Register';
@@ -8,6 +9,7 @@ import './App.css';
 // Security & Redirects
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardRedirect from './components/DashboardRedirect';
+import SessionManager from './components/SessionManager'; // <-- ADDED: Session Timer
 
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -26,15 +28,16 @@ import StudentDashboard from './pages/student/StudentDashboard';
 import MyCoursesStudent from './pages/student/MyCourses';
 import CourseDetailStudent from './pages/student/CourseDetailStudent';
 import StudentPayments from './pages/student/Payments';
+import StudentCertificates from './pages/student/Certificates'; 
 
-// Shared Pages
-import Attendance from './pages/shared/Attendance';
-import Assignments from './pages/shared/Assignments';
-import Results from './pages/shared/Results';
-import Messages from './pages/shared/Messages';
-import Profile from './pages/shared/Profile';
-import VirtualLab from './pages/shared/VirtualLab';
-import AIAssistant from './pages/shared/AIAssistant';
+// Shared Pages (FIXED CASE: 'Shared' instead of 'shared')
+import Attendance from './pages/Shared/Attendance';
+import Assignments from './pages/Shared/Assignments';
+import Results from './pages/Shared/Results';
+import Messages from './pages/Shared/Messages';
+import Profile from './pages/Shared/Profile';
+import VirtualLab from './pages/Shared/VirtualLab';
+import AIAssistant from './pages/Shared/AIAssistant';
 
 function Unauthorized() {
   return (
@@ -51,6 +54,8 @@ function Unauthorized() {
 function App() {
   return (
     <Router>
+      <SessionManager /> {/* <-- ADDED: Session Timer Component */}
+      
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         
@@ -100,6 +105,8 @@ function App() {
           <Route path="/student/courses" element={<MyCoursesStudent />} />
           <Route path="/student/courses/:id" element={<CourseDetailStudent />} />
           <Route path="/student/payments" element={<StudentPayments />} />
+          <Route path="/student/certificates" element={<StudentCertificates />} />
+          
           {/* Shared routes accessed by student */}
           <Route path="/student/assignments" element={<Assignments />} />
           <Route path="/student/results" element={<Results />} />
