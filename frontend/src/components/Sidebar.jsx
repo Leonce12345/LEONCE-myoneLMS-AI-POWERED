@@ -7,6 +7,12 @@ import {
 } from 'lucide-react';
 
 const Sidebar = ({ role, user }) => {
+  const getAvatarUrl = (path, name) => {
+    if (!path) return `https://ui-avatars.com/api/?name=${name}&background=random`;
+    if (path.startsWith('/uploads/')) return `http://localhost:5000${path}`;
+    return path;
+  };
+
   const menus = {
     admin: [
       { name: 'Switch Dashboard', icon: LayoutDashboard, path: '/dashboard' },
@@ -43,18 +49,19 @@ const Sidebar = ({ role, user }) => {
       { name: 'Exams & Results', icon: BarChart3, path: '/student/results' },
       { name: 'Virtual Lab', icon: FlaskConical, path: '/student/virtual-lab' },
       { name: 'Payments', icon: CreditCard, path: '/student/payments' },
-      { name: 'Certificates', icon: Award, path: '/student/certificates' },
+      { name: 'Certificates', icon: Award, path: '/student/certificates' }, 
       { name: 'Messages', icon: MessageSquare, path: '/student/messages' },
       { name: 'Profile', icon: User, path: '/student/profile' },
     ]
   };
 
   return (
-    <div className="w-64 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl shadow-lg p-4 flex flex-col h-[calc(100vh-2rem)] m-4 overflow-y-auto border border-white/50 dark:border-slate-700 transition-colors duration-300">
+    // CHANGED: w-64 to w-full lg:w-64 and h-[calc(100vh-2rem)] to h-auto lg:h-[calc(100vh-2rem)]
+    <div className="w-full lg:w-64 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl shadow-lg p-4 flex flex-col h-auto lg:h-[calc(100vh-2rem)] m-4 overflow-y-auto border border-white/50 dark:border-slate-700 transition-colors duration-300 shrink-0">
       {role === 'instructor' && (
         <div className="flex flex-col items-center mb-6 pt-4 border-b dark:border-slate-700 pb-4">
-          <img src={user?.avatar || "https://i.pravatar.cc/150?img=5"} alt="Profile" className="w-20 h-20 rounded-full border-4 border-blue-400 mb-2 object-cover" />
-          <h3 className="font-bold text-slate-800 dark:text-white text-lg">{user?.name || 'Sarah Njoki'}</h3>
+          <img src={getAvatarUrl(user?.avatar, user?.name)} alt="Profile" className="w-20 h-20 rounded-full border-4 border-blue-400 mb-2 object-cover" />
+          <h3 className="font-bold text-slate-800 dark:text-white text-lg break-words text-center">{user?.name || 'Sarah Njoki'}</h3>
           <span className="text-blue-500 text-xs font-semibold uppercase tracking-wider">Instructor</span>
         </div>
       )}
@@ -80,9 +87,9 @@ const Sidebar = ({ role, user }) => {
                 }`
               }
             >
-              <div className="flex items-center gap-3">
-                <item.icon className="w-5 h-5" />
-                <span className="text-sm">{item.name}</span>
+              <div className="flex items-center gap-3 min-w-0">
+                <item.icon className="w-5 h-5 shrink-0" />
+                <span className="text-sm truncate">{item.name}</span>
               </div>
               {item.badge && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{item.badge}</span>}
             </NavLink>

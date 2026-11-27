@@ -53,6 +53,22 @@ const staffSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    
+    // ===== NEW FIELDS FOR PROFILE MANAGEMENT =====
+    phone: {
+        type: String,
+        default: '+254 700 000 000'
+    },
+    bio: {
+        type: String,
+        default: 'Passionate learner exploring new skills on LearnHub.'
+    },
+    avatar: {
+        type: String,
+        default: ''
+    },
+    // =============================================
+
     otp: {
         type: String,
         default: null

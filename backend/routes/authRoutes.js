@@ -1,6 +1,8 @@
 // routes/authRoutes.js
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
 const Staff = require('../models/Staff');
 const { 
     registerStaff, 
@@ -8,19 +10,36 @@ const {
     verifyOTP,
     forgotPassword,
     verifyResetOTP,
-    resetPassword
+    resetPassword,
+    updateProfile,     // <-- NEW
+    changePassword     // <-- NEW
 } = require('../controllers/authController');
 const { protect, authorize } = require('../middleware/authMiddleware');
+
+// Multer Storage Config for Profile Avatars
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/'); // Ensure this folder exists in your backend root
+    },
+    filename: function (req, file, cb) {
+        cb(null, `profile-${req.user.id}-${Date.now()}${path.extname(file.originalname)}`);
+    }
+});
+const upload = multer({ storage: storage });
 
 // Public Routes
 router.post('/register', registerStaff);
 router.post('/login', loginStaff);
 router.post('/verify-otp', verifyOTP);
 
-// ===== NEW: Forgot Password Routes (Public - works for normal + Google users) =====
+// Forgot Password Routes
 router.post('/forgot-password', forgotPassword);
 router.post('/verify-reset-otp', verifyResetOTP);
 router.post('/reset-password', resetPassword);
+
+// Protected Profile Routes
+router.put('/profile', protect, upload.single('avatar'), updateProfile);
+router.put('/change-password', protect, changePassword);
 
 router.post('/logout', (req, res) => {
     if (req.session) {

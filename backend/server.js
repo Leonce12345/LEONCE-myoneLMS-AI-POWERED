@@ -17,7 +17,9 @@ const mpesaRoutes = require('./routes/mpesaRoutes');
 const courseRoutes = require('./routes/courseRoutes');
 const aiRoutes = require('./routes/aiRoutes'); 
 const academicRoutes = require('./routes/academicRoutes'); 
-const messageRoutes = require('./routes/messageRoutes'); // <-- ADDED
+const messageRoutes = require('./routes/messageRoutes'); 
+const searchRoutes = require('./routes/searchRoutes');
+const adminRoutes = require('./routes/adminRoutes'); // <-- NEW ADDITION
 
 const app = express();
 app.set('trust proxy', 1);
@@ -148,7 +150,9 @@ app.use('/api/mpesa', mpesaRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/academic', academicRoutes); 
-app.use('/api/messages', messageRoutes); // <-- ADDED
+app.use('/api/messages', messageRoutes); 
+app.use('/api/search', searchRoutes); 
+app.use('/api/admin', adminRoutes); // <-- NEW ADDITION
 
 app.get('/api/users', requireDoubleLayerAuth, async(req, res) => {
     try {

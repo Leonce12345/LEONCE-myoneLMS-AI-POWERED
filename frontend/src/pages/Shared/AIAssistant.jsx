@@ -8,42 +8,36 @@ const AIAssistant = () => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user_data')) || { name: 'User', role: 'student' };
 
-  // Chat State
+  // General Chat State
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Hello! I have analyzed the PDFs uploaded for your courses. Select a course above and ask me anything!' }
+    { role: 'assistant', content: 'Hello! I am your AI Assistant. How can I help you today?' }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   
-  // Course State
+  // Student Specific State (Vector Search)
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState('');
   
-  // Auto-scroll reference
   const messagesEndRef = useRef(null);
 
-  // Fetch student's enrolled courses on load
+  // Fetch courses only if the user is a student
   useEffect(() => {
-    const fetchMyCourses = async () => {
-      try {
-        const response = await api.get('/courses');
-        // Filter to only show courses the student is enrolled in
-        const enrolled = response.data.filter(c => 
-          c.enrolledStudents?.includes(user._id || user.id)
-        );
-        setCourses(enrolled);
-        
-        if (enrolled.length > 0) {
-          setSelectedCourse(enrolled[0]._id); // Auto-select first course
+    if (user.role === 'student') {
+      const fetchMyCourses = async () => {
+        try {
+          const response = await api.get('/courses');
+          const enrolled = response.data.filter(c => c.enrolledStudents?.includes(user._id || user.id));
+          setCourses(enrolled);
+          if (enrolled.length > 0) setSelectedCourse(enrolled[0]._id);
+        } catch (error) {
+          console.error("Error fetching courses:", error);
         }
-      } catch (error) {
-        console.error("Error fetching courses:", error);
-      }
-    };
-    fetchMyCourses();
-  }, [user._id, user.id]);
+      };
+      fetchMyCourses();
+    }
+  }, [user._id, user.id, user.role]);
 
-  // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
@@ -52,7 +46,8 @@ const AIAssistant = () => {
     e.preventDefault();
     if (!input.trim()) return;
 
-    if (!selectedCourse) {
+    // Validation for students
+    if (user.role === 'student' && !selectedCourse) {
       alert("Please enroll in a course with uploaded materials first.");
       return;
     }
@@ -63,19 +58,18 @@ const AIAssistant = () => {
     setIsTyping(true);
 
     try {
-      // Call the backend AI route
-      const response = await api.post('/ai/ask', {
-        courseId: selectedCourse,
-        question: userMessage
-      });
-
+      let response;
+      if (user.role === 'student') {
+        // Student asks based on specific course PDFs
+        response = await api.post('/ai/ask', { courseId: selectedCourse, question: userMessage });
+      } else {
+        // Admin/Instructor asks general platform questions
+        response = await api.post('/ai/general-chat', { question: userMessage });
+      }
       setMessages(prev => [...prev, { role: 'assistant', content: response.data.answer }]);
     } catch (error) {
       console.error("AI Error:", error);
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: "Sorry, I encountered an error while searching the notes. Please try again." 
-      }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I encountered an error. Please try again." }]);
     } finally {
       setIsTyping(false);
     }
@@ -87,7 +81,6 @@ const AIAssistant = () => {
       
       <div className="flex-1 p-6 overflow-y-auto h-screen flex flex-col">
         
-        {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <button onClick={() => navigate(`/${user.role}/dashboard`)} className="bg-white/80 p-2 rounded-full hover:bg-white transition shadow-sm">
             <ArrowLeft className="w-5 h-5 text-slate-700" />
@@ -97,31 +90,32 @@ const AIAssistant = () => {
           </h1>
         </div>
 
-        {/* Chat Container */}
         <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden max-w-4xl mx-auto w-full h-[75vh]">
           
-          {/* Top Bar with Course Selector */}
+          {/* Top Bar */}
           <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
-              <span className="w-2 h-2 rounded-full bg-green-500"></span> Vector Search Active
+              <span className="w-2 h-2 rounded-full bg-green-500"></span> 
+              {user.role === 'student' ? 'Vector Search Active' : 'Platform Assistant Active'}
             </div>
             
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 font-medium">Select Course:</span>
-              <select 
-                value={selectedCourse} 
-                onChange={(e) => setSelectedCourse(e.target.value)}
-                className="bg-white border border-slate-200 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-500"
-              >
-                {courses.length === 0 ? (
-                  <option value="">No enrolled courses</option>
-                ) : (
-                  courses.map(c => (
-                    <option key={c._id} value={c._id}>{c.title}</option>
-                  ))
-                )}
-              </select>
-            </div>
+            {/* Show Course Dropdown ONLY for Students */}
+            {user.role === 'student' && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500 font-medium">Select Course:</span>
+                <select 
+                  value={selectedCourse} 
+                  onChange={(e) => setSelectedCourse(e.target.value)}
+                  className="bg-white border border-slate-200 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-500"
+                >
+                  {courses.length === 0 ? (
+                    <option value="">No enrolled courses</option>
+                  ) : (
+                    courses.map(c => <option key={c._id} value={c._id}>{c.title}</option>)
+                  )}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Messages Area */}
@@ -140,23 +134,18 @@ const AIAssistant = () => {
                     : 'bg-white border border-slate-100 text-slate-700 rounded-tl-none'
                 }`}>
                   {msg.content}
-                  {msg.role === 'assistant' && index > 0 && (
-                     <div className="mt-2 bg-slate-100 p-2 rounded text-xs flex items-center gap-1 text-slate-500">
-                       <FileText className="w-3 h-3"/> Source: Course Notes
-                     </div>
-                  )}
                 </div>
               </div>
             ))}
             
-            {/* Typing Indicator */}
             {isTyping && (
               <div className="flex gap-3">
                 <div className="w-8 h-8 rounded-full bg-cyan-100 text-cyan-600 flex items-center justify-center shrink-0">
                   <Sparkles className="w-4 h-4"/>
                 </div>
                 <div className="bg-white border border-slate-100 p-3 rounded-2xl rounded-tl-none text-sm text-slate-500 shadow-sm flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-cyan-500" /> Searching course notes...
+                  <Loader2 className="w-4 h-4 animate-spin text-cyan-500" /> 
+                  {user.role === 'student' ? 'Searching course notes...' : 'Thinking...'}
                 </div>
               </div>
             )}
@@ -170,13 +159,17 @@ const AIAssistant = () => {
                 type="text" 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                disabled={isTyping || courses.length === 0}
-                placeholder={courses.length === 0 ? "Enroll in a course to ask questions..." : "Ask me anything about the course notes..."} 
+                disabled={isTyping || (user.role === 'student' && courses.length === 0)}
+                placeholder={
+                  user.role === 'student' && courses.length === 0 
+                    ? "Enroll in a course to ask questions..." 
+                    : "Ask me anything..."
+                } 
                 className="w-full pl-4 pr-12 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-cyan-400 text-sm bg-slate-50 disabled:bg-slate-100 disabled:cursor-not-allowed" 
               />
               <button 
                 type="submit" 
-                disabled={isTyping || !input.trim() || courses.length === 0}
+                disabled={isTyping || !input.trim() || (user.role === 'student' && courses.length === 0)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 bg-cyan-500 text-white p-2 rounded-lg hover:bg-cyan-600 transition disabled:bg-cyan-300"
               >
                 <Send className="w-4 h-4" />

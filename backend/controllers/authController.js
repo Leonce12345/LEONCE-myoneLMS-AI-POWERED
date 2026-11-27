@@ -132,7 +132,7 @@ exports.verifyOTP = async (req, res) => {
     }
 };
 
-// ===== NEW: Forgot Password - works for normal + Google users =====
+// Forgot Password
 exports.forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
@@ -163,7 +163,7 @@ exports.forgotPassword = async (req, res) => {
     }
 };
 
-// ===== NEW: Verify Reset OTP =====
+// Verify Reset OTP
 exports.verifyResetOTP = async (req, res) => {
     try {
         const { email, otp } = req.body;
@@ -195,7 +195,7 @@ exports.verifyResetOTP = async (req, res) => {
     }
 };
 
-// ===== NEW: Reset Password =====
+// Reset Password
 exports.resetPassword = async (req, res) => {
     try {
         const { email, newPassword, resetToken } = req.body;
@@ -231,5 +231,75 @@ exports.resetPassword = async (req, res) => {
     } catch (error) {
         console.error('Error in reset-password:', error);
         res.status(500).json({ message: 'Server error during reset' });
+    }
+};
+
+// ===== NEW: Update Profile =====
+exports.updateProfile = async (req, res) => {
+    try {
+        const staff = await Staff.findById(req.user._id);
+        if (!staff) return res.status(404).json({ message: 'User not found' });
+
+        if (req.body.name) staff.name = req.body.name;
+        if (req.body.phone) staff.phone = req.body.phone;
+        if (req.body.bio) staff.bio = req.body.bio;
+        
+        // If an avatar file was uploaded via Multer
+        if (req.file) {
+            staff.avatar = `/uploads/${req.file.filename}`;
+        }
+
+        await staff.save();
+
+        // Return updated user object so frontend can update localStorage
+        const userObj = { 
+            id: staff._id, 
+            _id: staff._id,
+            email: staff.email, 
+            name: staff.name, 
+            role: staff.role, 
+            phone: staff.phone, 
+            bio: staff.bio, 
+            avatar: staff.avatar 
+        };
+        
+        res.status(200).json({ message: 'Profile updated successfully', user: userObj });
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        res.status(500).json({ message: 'Server error updating profile' });
+    }
+};
+
+// ===== NEW: Change Password =====
+exports.changePassword = async (req, res) => {
+    try {
+        const { oldPassword, newPassword } = req.body;
+        
+        if (!oldPassword || !newPassword) {
+            return res.status(400).json({ message: 'Both old and new passwords are required' });
+        }
+        if (newPassword.length < 8) {
+            return res.status(400).json({ message: 'New password must be at least 8 characters' });
+        }
+
+        const staff = await Staff.findById(req.user._id);
+        
+        // If user registered with Google/Facebook, they might not have a password
+        if (!staff.password) {
+            return res.status(400).json({ message: 'Social login accounts cannot change passwords here.' });
+        }
+
+        const isMatch = await bcrypt.compare(oldPassword, staff.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Incorrect current password' });
+        }
+
+        staff.password = newPassword; // Pre-save hook handles hashing
+        await staff.save();
+        
+        res.status(200).json({ message: 'Password changed successfully' });
+    } catch (error) {
+        console.error('Error changing password:', error);
+        res.status(500).json({ message: 'Server error changing password' });
     }
 };

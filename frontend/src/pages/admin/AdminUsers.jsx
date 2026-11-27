@@ -1,24 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Sidebar from '../../components/Sidebar';
-import api from '../../api/axios'; // <-- Importing our new client
+import api from '../../api/axios';
 import { ArrowLeft, Search, Plus, Filter, MoreVertical, Shield, Loader2 } from 'lucide-react';
 
 const AdminUsers = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
+  
   const user = JSON.parse(localStorage.getItem('user_data')) || { name: 'Alex Mwangi', role: 'admin' };
 
-  // State for backend data
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState(initialQuery);
+
+  useEffect(() => {
+    // If the URL query changes (e.g., from the global search), update the local search term
+    setSearchTerm(searchParams.get('q') || '');
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        // Replace '/users' with your exact backend route if different
         const response = await api.get('/auth/admin/users');  
-        
-        // Note: If your backend returns { data: [...] }, change this to response.data.data
         setUsers(response.data); 
       } catch (error) {
         console.error("Error fetching users:", error);
@@ -29,6 +34,17 @@ const AdminUsers = () => {
 
     fetchUsers();
   }, []);
+
+  // Filter users based on search term
+  const filteredUsers = users.filter((u) => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      (u.name && u.name.toLowerCase().includes(term)) ||
+      (u.email && u.email.toLowerCase().includes(term)) ||
+      (u.role && u.role.toLowerCase().includes(term))
+    );
+  });
 
   return (
     <div className="min-h-screen bg-[url('https://images.unsplash.com/photo-1557682250-33bd709cbe85?q=80&w=2029&auto=format&fit=crop')] bg-cover bg-center bg-fixed flex">
@@ -56,7 +72,13 @@ const AdminUsers = () => {
           <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
             <div className="relative w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-              <input type="text" placeholder="Search users..." className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-cyan-400 text-sm bg-white" />
+              <input 
+                type="text" 
+                placeholder="Search users..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-cyan-400 text-sm bg-white" 
+              />
             </div>
             <button className="flex items-center gap-2 text-sm text-slate-600 border border-slate-200 px-3 py-2 rounded-lg hover:bg-white bg-slate-50">
               <Filter className="w-4 h-4" /> Filter by Role
@@ -83,14 +105,14 @@ const AdminUsers = () => {
                       Loading users from database...
                     </td>
                   </tr>
-                ) : users.length === 0 ? (
+                ) : filteredUsers.length === 0 ? (
                   <tr>
                     <td colSpan="5" className="px-6 py-12 text-center text-slate-500">
-                      No users found.
+                      No users found matching "{searchTerm}".
                     </td>
                   </tr>
                 ) : (
-                  users.map((u) => (
+                  filteredUsers.map((u) => (
                     <tr key={u._id || u.id} className="hover:bg-slate-50/50 transition">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
